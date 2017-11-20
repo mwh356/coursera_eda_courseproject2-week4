@@ -29,7 +29,7 @@ data %>%
   ggplot(aes(as.factor(year), Emissions)) +
   geom_col() +
   labs(title = "PM2.5 Emissions Related to Motor Vehicle Sources in Baltimore City, 1999 - 2008",
-       subtitle = "Emssions From Motor Vehicle Sources Have Trended Down Since 1999",
+       subtitle = "Emissions From Motor Vehicle Sources Have Trended Down Since 1999",
        x = "Year",
        y = "PM2.5 Emissions (tons)",
        caption = "Data from www3.epa.gov") +
