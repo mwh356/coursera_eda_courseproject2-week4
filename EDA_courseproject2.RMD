@@ -1,0 +1,177 @@
+---
+title: "PM2.5 Emissions Exploratory Data Analysis Course Project 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyr)
+library(tidyverse)
+library(lubridate)
+
+```
+
+***
+### Exploratory Data Analysis Course Project 2
+***
+
+You must address the following questions and tasks in your exploratory analysis. For each question/task you will need to make a single plot. Unless specified, you can use any plotting system in R to make your plot.
+
+Step 1: Download and unzip the file
+
+```{r, eval = FALSE}
+
+# Download and unzip the file
+
+fileurl <- "https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip"
+
+download.file(fileurl, destfile = "EPA.zip")
+
+unzip("EPA.zip")
+
+```
+
+#### Question 1
+Have total emissions from PM2.5 decreased in the United States from 1999 to 2008? Using the base plotting system, make a plot showing the total PM2.5 emission from all sources for each of the years 1999, 2002, 2005, and 2008. Upload a PNG file containing your plot addressing this question.
+
+```{r, warning = FALSE}
+# Load the Datasets
+
+NEI <- readRDS("summarySCC_PM25.rds")
+
+SCC <- readRDS("Source_Classification_Code.rds")
+
+# Merge and join the two datasets together
+
+data <- as.tibble(inner_join(NEI, SCC, by = "SCC"))
+
+# Group the datasets to get to Total US Emissions by year
+data2 <- data %>% 
+  group_by(year) %>% 
+  summarise(Emissions = sum(Emissions, na.rm = TRUE))
+
+# Create plot1 (line chart) 
+with(data2, plot(year, Emissions/10^6, type = "l", col = "red", 
+                 main = "US PM2.5 Emissions Trend, 1999 - 2008", 
+                 xlab = "Year", 
+                 ylab = "Total PM2.5 Emissions (megatons)"))
+with(data2, points(year, Emissions/10^6, pch = 18, col = "red")) #
+with(data2, abline(lm(Emissions/10^6 ~ year, data2), lty = "dashed", col = "grey")) # add regression line
+mtext("Total PM2.5 Emissions in the United States have decreased since 1999") # add subtitle
+mtext("Data from www3.epa.gov", side=1, line=3.5, at=2007.5, font = 3) # add caption
+
+```
+
+#### Questions 2
+Have total emissions from PM2.5 decreased in the Baltimore City, Maryland (fips == "24510") from 1999 to 2008? Use the base plotting system to make a plot answering this question.
+
+
+
+```{r, fig.width=10}
+# Group and filter the datasets to get to Total US Emissions by year in Baltimore City. 
+
+baltimore_byyear_data <- data %>% 
+  filter(fips == "24510") %>% # filter to Baltimore City
+  group_by(year) %>% 
+  summarise(Emissions = sum(Emissions, na.rm = TRUE))
+
+# Create plot2 (bar plot) on screen device
+
+with(baltimore_byyear_data, 
+     barplot(Emissions, names.arg = year, col = "red", 
+             main = "PM2.5 Emissions Trend in Baltimore City, 1999 - 2008", 
+             ylab = "PM2.5 Emissions (tons)", 
+             xlab = "Year"))
+mtext("In spite of the spike in 2005, Total Emissions from PM2.5 in Baltimore City have decreased from 1999 to 2008") # add subtitle
+
+```
+
+#### Questions 3
+Of the four types of sources indicated by the type (point, nonpoint, onroad, nonroad) variable, which of these four sources have seen decreases in emissions from 1999-2008 for Baltimore City? Which have seen increases in emissions from 1999-2008? Use the ggplot2 plotting system to make a plot answer this question.
+
+```{r, fig.width=8}
+
+data %>% 
+  filter(fips == "24510") %>% #Filter to Baltimore City 
+  group_by(type, year) %>% 
+  summarise(Emissions = sum(Emissions, na.rm = TRUE)) %>% 
+  mutate(type_f = factor(type, levels=c('NONPOINT','POINT','NON-ROAD','ON-ROAD'))) %>% # Create a new factor variable of "type" to modify the factor order 
+  ggplot(aes(as.factor(year), Emissions, fill = type_f)) +
+  geom_col() +
+  facet_grid(.~type_f) +
+  labs(title = "Baltimore City PM2.5 Emissions Trend by Source Type, 1999 - 2008",
+       subtitle = "Non-Road, NonPoint and On-Road source types did see decreases in PM2.5 Emissions. ",
+       x = "Year",
+       y = "PM2.5 Emissions (tons)",
+       fill = "Types of Sources",
+       caption = "Data from www3.epa.gov") +
+  theme_bw()
+
+```
+
+
+#### Questions 4
+Across the United States, how have emissions from coal combustion-related sources changed from 1999-2008?
+
+```{r, fig.width=8}
+data %>% 
+  filter(grepl("Coal", Short.Name)) %>% # Filter for observations that contain "Coal" in the Short.Name variable. 
+  group_by(year) %>% 
+  summarise(Emissions = sum(Emissions, na.rm = TRUE)) %>% 
+  ggplot(aes(as.factor(year), Emissions/10^3)) +
+  geom_col() +
+  labs(title = "US PM2.5 Emissions From Coal-Combustion Related Sources Trend, 1999 - 2008",
+       subtitle = "Emissions From Coal-Combustion Related Sources Dropped Significantly in 2008",
+       x = "Year",
+       y = "PM2.5 Emissions (kilotons)",
+       caption = "Data from www3.epa.gov") +
+  theme_bw()
+
+```
+
+
+#### Questions 5
+How have emissions from motor vehicle sources changed from 1999-2008 in Baltimore City?
+
+```{r, fig.width=8}
+
+data %>% 
+  filter(fips == "24510") %>%
+  filter(grepl("Vehicle", SCC.Level.Two)) %>% # Filtering under the assumption that off-highway/non-road vehicles also constitute as "Motor Vehicles"
+  group_by(year) %>% 
+  summarise(Emissions = sum(Emissions, na.rm = TRUE)) %>% 
+  ggplot(aes(as.factor(year), Emissions)) +
+  geom_col() +
+  labs(title = "PM2.5 Emissions Related to Motor Vehicle Sources in Baltimore City, 1999 - 2008",
+       subtitle = "Emissions From Motor Vehicle Sources Have Trended Down Since 1999",
+       x = "Year",
+       y = "PM2.5 Emissions (tons)",
+       caption = "Data from www3.epa.gov") +
+  theme_bw()
+
+```
+
+
+#### Questions 6
+Compare emissions from motor vehicle sources in Baltimore City with emissions from motor vehicle sources in Los Angeles County, California (fips == "06037"). Which city has seen greater changes over time in motor vehicle emissions?
+
+```{r, fig.width=9}
+data %>% 
+  filter(grepl("Vehicle", SCC.Level.Two)) %>% # Filtering under the assumption that off-highway/non-road vehicles also constitute as "Motor Vehicles"
+  filter(fips == "24510" | fips == "06037") %>% # filter for LA and Baltimore City
+  group_by(fips, year) %>%
+  summarise(Emissions = sum(Emissions, na.rm = TRUE)) %>%
+  mutate(City = ifelse(fips == "24510", "Baltimore City, MD", ifelse(fips == "06037", "Los Angeles County, CA", "Others"))) %>% # Create a column of the city name
+  ggplot(aes(as.factor(year), Emissions/10^3, fill = City)) +
+  facet_grid(.~City) +
+  geom_col() +
+  labs(title = "PM2.5 Emissions From Motor Vehicles in Baltimore City and Los Angeles County, 1999 - 2008",
+       x = "Year",
+       y = "PM2.5 Emissions (kilotons)",
+       fill = "Location",
+       caption = "Data from www3.epa.gov") +
+  theme_bw()
+
+```
+
